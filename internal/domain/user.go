@@ -17,10 +17,10 @@ type User struct {
 }
 
 type UserSession struct {
-	ID        uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	UserID    uuid.UUID `json:"user_id" gorm:"type:uuid;not null"`
-	Token     string    `json:"refresh_token" gorm:"unique;not null"`
-	Expiry    time.Time `json:"expiry" gorm:"type:timestamp;not null"`
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	ID        uuid.UUID  `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	UserID    uuid.UUID  `json:"user_id" gorm:"type:uuid;not null"`
+	Token     *string    `json:"refresh_token" gorm:"unique"`
+	Expiry    *time.Time `json:"expiry" gorm:"type:timestamp"`
+	CreatedAt time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }
