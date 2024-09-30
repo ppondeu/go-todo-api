@@ -11,24 +11,24 @@ type UserRepository interface {
 	Find(where interface{}) (*domain.User, error)
 	FindAll() ([]domain.User, error)
 	Update(ID uuid.UUID, user *domain.User) (*domain.User, error)
-	Delete(user *domain.User) error
+	Delete(ID uuid.UUID) error
 	FindSession(where interface{}) (*domain.UserSession, error)
 	SaveSession(newSession *domain.UserSession) (*domain.UserSession, error)
 	UpdateSession(where interface{}, session *domain.UserSession) (*domain.UserSession, error)
 }
 
-type userRepository struct {
+type userRepositoryImpl struct {
 	db *gorm.DB
 }
 
 func NewUserRepository(db *gorm.DB) UserRepository {
-	return &userRepository{
+	return &userRepositoryImpl{
 		db: db,
 	}
 }
 
-func (u *userRepository) Save(newUser *domain.User) (*domain.User, error) {
-	err := u.db.Omit("Todos", "TodoCategory").Create(newUser).Error
+func (r *userRepositoryImpl) Save(newUser *domain.User) (*domain.User, error) {
+	err := r.db.Omit("Todos", "TodoCategory").Create(newUser).Error
 	if err != nil {
 		return nil, err
 	}
@@ -36,9 +36,9 @@ func (u *userRepository) Save(newUser *domain.User) (*domain.User, error) {
 	return newUser, nil
 }
 
-func (u *userRepository) Find(where interface{}) (*domain.User, error) {
+func (r *userRepositoryImpl) Find(where interface{}) (*domain.User, error) {
 	user := &domain.User{}
-	err := u.db.Where(where).Preload("Todos").Preload("TodoCategory").First(user).Error
+	err := r.db.Where(where).Preload("Todos").Preload("TodoCategory").First(user).Error
 	if err != nil {
 		return nil, err
 	}
@@ -46,9 +46,9 @@ func (u *userRepository) Find(where interface{}) (*domain.User, error) {
 	return user, nil
 }
 
-func (u *userRepository) FindAll() ([]domain.User, error) {
+func (r *userRepositoryImpl) FindAll() ([]domain.User, error) {
 	var users []domain.User
-	err := u.db.Preload("Todos").Preload("TodoCategory").Find(&users).Error
+	err := r.db.Preload("Todos").Preload("TodoCategory").Find(&users).Error
 	if err != nil {
 		return nil, err
 	}
@@ -56,14 +56,14 @@ func (u *userRepository) FindAll() ([]domain.User, error) {
 	return users, nil
 }
 
-func (u *userRepository) Update(ID uuid.UUID, user *domain.User) (*domain.User, error) {
-	err := u.db.Model(user).Where("id = ?", ID).Updates(user).Error
+func (r *userRepositoryImpl) Update(ID uuid.UUID, user *domain.User) (*domain.User, error) {
+	err := r.db.Model(user).Where("id = ?", ID).Updates(user).Error
 	if err != nil {
 		return nil, err
 	}
 
 	var updatedUser domain.User
-	err = u.db.Where("id = ?", ID).Preload("Todos").Preload("TodoCategory").First(&updatedUser).Error
+	err = r.db.Where("id = ?", ID).Preload("Todos").Preload("TodoCategory").First(&updatedUser).Error
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +71,8 @@ func (u *userRepository) Update(ID uuid.UUID, user *domain.User) (*domain.User, 
 	return &updatedUser, nil
 }
 
-func (u *userRepository) Delete(user *domain.User) error {
-	err := u.db.Delete(user).Error
+func (r *userRepositoryImpl) Delete(ID uuid.UUID) error {
+	err := r.db.Where("id = ?", ID).Delete(&domain.User{}).Error
 	if err != nil {
 		return err
 	}
@@ -80,9 +80,9 @@ func (u *userRepository) Delete(user *domain.User) error {
 	return nil
 }
 
-func (u *userRepository) FindSession(where interface{}) (*domain.UserSession, error) {
+func (r *userRepositoryImpl) FindSession(where interface{}) (*domain.UserSession, error) {
 	session := &domain.UserSession{}
-	err := u.db.Where(where).First(session).Error
+	err := r.db.Where(where).First(session).Error
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +90,8 @@ func (u *userRepository) FindSession(where interface{}) (*domain.UserSession, er
 	return session, nil
 }
 
-func (u *userRepository) SaveSession(newSession *domain.UserSession) (*domain.UserSession, error) {
-	err := u.db.Create(newSession).Error
+func (r *userRepositoryImpl) SaveSession(newSession *domain.UserSession) (*domain.UserSession, error) {
+	err := r.db.Create(newSession).Error
 	if err != nil {
 		return nil, err
 	}
@@ -99,18 +99,18 @@ func (u *userRepository) SaveSession(newSession *domain.UserSession) (*domain.Us
 	return newSession, nil
 }
 
-func (u *userRepository) UpdateSession(where interface{}, session *domain.UserSession) (*domain.UserSession, error) {
+func (r *userRepositoryImpl) UpdateSession(where interface{}, session *domain.UserSession) (*domain.UserSession, error) {
 	updates := map[string]interface{}{
-		"token": &session.Token,
-		"expiry":        &session.Expiry,
+		"token":  &session.Token,
+		"expiry": &session.Expiry,
 	}
-	err := u.db.Model(&domain.UserSession{}).Where(where).Updates(updates).Error
+	err := r.db.Model(&domain.UserSession{}).Where(where).Updates(updates).Error
 	if err != nil {
 		return nil, err
 	}
 
 	var sessionUpdated domain.UserSession
-	err = u.db.Where(where).First(&sessionUpdated).Error
+	err = r.db.Where(where).First(&sessionUpdated).Error
 	if err != nil {
 		return nil, err
 	}
