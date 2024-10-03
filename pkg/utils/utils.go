@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,14 +27,15 @@ func ComparePassword(hashedPassword string, password string) error {
 
 	return nil
 }
+func ParseTime(timeStr string) (*time.Time, error) {
+	layout := "2006-01-02T15:04-07:00"
 
-func ParseTime(timeStr string) *time.Time {
-	time, err := time.Parse(time.RFC3339, timeStr)
+	parsedTime, err := time.Parse(layout, timeStr)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("invalid date format: %v", err)
 	}
 
-	return &time
+	return &parsedTime, nil
 }
 
 func ParseUUID(uuidStr string) *uuid.UUID {
