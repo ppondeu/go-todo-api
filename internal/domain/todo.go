@@ -44,10 +44,3 @@ type TodoCategory struct {
 	Name   string    `json:"name" gorm:"not null;type:varchar(50)"`
 	UserID uuid.UUID `json:"user_id" gorm:"type:uuid;not null"`
 }
-
-func (todo *Todo) setIsOverdue(value bool) {
-	if todo.IsOverdue == nil {
-		todo.IsOverdue = new(bool)
-	}
-	*todo.IsOverdue = value
-}

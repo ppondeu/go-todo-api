@@ -33,12 +33,18 @@ func (r *userRepositoryImpl) Save(newUser *domain.User) (*domain.User, error) {
 		return nil, err
 	}
 
-	return newUser, nil
+	var user domain.User
+	err = r.db.Where("id = ?", newUser.ID).Preload("Todos").Preload("TodoCategory").First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 func (r *userRepositoryImpl) Find(where interface{}) (*domain.User, error) {
 	user := &domain.User{}
-	err := r.db.Where(where).Preload("Todos").Preload("TodoCategory").First(user).Error
+	err := r.db.Where(where).Preload("Todos.Category").Preload("TodoCategory").First(user).Error
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +54,7 @@ func (r *userRepositoryImpl) Find(where interface{}) (*domain.User, error) {
 
 func (r *userRepositoryImpl) FindAll() ([]domain.User, error) {
 	var users []domain.User
-	err := r.db.Preload("Todos").Preload("TodoCategory").Find(&users).Error
+	err := r.db.Preload("Todos.Category").Preload("TodoCategory").Find(&users).Error
 	if err != nil {
 		return nil, err
 	}

@@ -3,11 +3,14 @@ package main
 import (
 	"fmt"
 
-	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
 	"github.com/ppondeu/go-todo-api/config"
 	"github.com/ppondeu/go-todo-api/database"
-	"github.com/ppondeu/go-todo-api/internal/domain"
+	"github.com/ppondeu/go-todo-api/internal/handler"
 	"github.com/ppondeu/go-todo-api/internal/repository"
+	"github.com/ppondeu/go-todo-api/internal/routes"
+	"github.com/ppondeu/go-todo-api/internal/usecase"
+	v "github.com/ppondeu/go-todo-api/pkg/validator"
 )
 
 func main() {
@@ -15,47 +18,27 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	_ = cfg
-
+	validator := v.NewValidator()
 	databaseInstance := database.NewPostgresDatabase(cfg)
-	categoryID, _ := uuid.Parse("d0fe7c1b-4765-49e8-b5b2-3677215aef23")
-	userID, err := uuid.Parse("a2723d86-6066-4aad-a04a-4758f040e855")
-	todoID, _ := uuid.Parse("a21c7bac-1653-45fc-b952-3766821a2979")
+
+	userRepo := repository.NewUserRepository(databaseInstance.GetDb())
+	userService := usecase.NewUserService(&userRepo)
+	userHandler := handler.NewUserHandler(userService, validator)
+
 	todoRepo := repository.NewTodoRepository(databaseInstance.GetDb())
+	todoService := usecase.NewTodoService(&todoRepo)
+	todoHandler := handler.NewTodoHandler(&todoService, validator)
 
-	updateTodo := &domain.Todo{
-		CategoryID: &categoryID,
-	}
+	router := echo.New()
+	defer router.Close()
+	router.GET("/", func(c echo.Context) error {
+		return c.JSON(200, map[string]string{"message": "Hello, World!"})
+	})
 
-	todo, err := todoRepo.Update(todoID, updateTodo)
-	if err != nil {
-		panic(err)
-	}
+	routes.RegisterUserRoute(router, userHandler)
+	routes.RegisterTodoRoute(router, todoHandler)
 
-	fmt.Printf("%v\n", todo.Title)
-	if todo.Category != nil {
-		fmt.Printf("%v\n", todo.Category.Name)
-	} else {
-		fmt.Println("No category")
-	}
+	router.Logger.Fatal(router.Start(fmt.Sprintf(":%d", cfg.Server.Port)))
 
-	todos, _ := todoRepo.FindByUserID(userID)
-
-	for _, todo := range todos {
-		fmt.Printf("%v\n", todo.Title)
-		if todo.Category != nil {
-			fmt.Printf("%v\n", todo.Category.Name)
-		} else {
-			fmt.Println("No category")
-		}
-	}
-
-	// router := echo.New()
-	// router.GET("/", func(c echo.Context) error {
-	// 	return c.JSON(200, map[string]string{"message": "Hello, World!"})
-	// })
-
-	// router.Logger.Fatal(router.Start(fmt.Sprintf(":%d", cfg.Server.Port)))
-
+	
 }

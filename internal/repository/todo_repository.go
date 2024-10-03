@@ -11,7 +11,7 @@ type TodoRepository interface {
 	Find(where interface{}) (*domain.Todo, error)
 	FindAll() ([]domain.Todo, error)
 	FindByUserID(userID uuid.UUID) ([]domain.Todo, error)
-	Update(ID uuid.UUID, todo *domain.Todo) (*domain.Todo, error)
+	Update(ID uuid.UUID, todo map[string]interface{}) (*domain.Todo, error)
 	Delete(ID uuid.UUID) error
 	SaveCategory(newCategory *domain.TodoCategory) (*domain.TodoCategory, error)
 	FindCategories(userID uuid.UUID) ([]domain.TodoCategory, error)
@@ -76,11 +76,8 @@ func (r *TodoRepositoryImpl) FindByUserID(userID uuid.UUID) ([]domain.Todo, erro
 	return todos, nil
 }
 
-func (r *TodoRepositoryImpl) Update(ID uuid.UUID, todo *domain.Todo) (*domain.Todo, error) {
-	err := r.db.Model(todo).Where("id = ?", ID).Updates(todo).Error
-	if err != nil {
-		return nil, err
-	}
+func (r *TodoRepositoryImpl) Update(ID uuid.UUID, todo map[string]interface{}) (*domain.Todo, error) {
+	err := r.db.Model(&domain.Todo{}).Where("id = ?", ID).Updates(todo).Error
 
 	var updatedTodo domain.Todo
 	err = r.db.Where("id = ?", ID).Preload("Category").First(&updatedTodo).Error

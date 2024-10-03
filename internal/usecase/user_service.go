@@ -1,12 +1,12 @@
 package usecase
 
 import (
-	"fmt"
-
 	"github.com/google/uuid"
 	"github.com/ppondeu/go-todo-api/internal/domain"
 	"github.com/ppondeu/go-todo-api/internal/repository"
 	"github.com/ppondeu/go-todo-api/pkg/dto"
+	"github.com/ppondeu/go-todo-api/pkg/errs"
+	"github.com/ppondeu/go-todo-api/pkg/logs"
 	"github.com/ppondeu/go-todo-api/pkg/utils"
 )
 
@@ -33,8 +33,7 @@ func NewUserService(userRepo *repository.UserRepository) UserService {
 func (s *userServiceImpl) Save(userDto *dto.CreateUserDto) (*domain.User, error) {
 	hashedPassword, err := utils.HashPassword(userDto.Password)
 	if err != nil {
-		fmt.Printf("Error hashing password: %v", err)
-		return nil, err
+		return nil, errs.NewBadRequestError("Error hashing password")
 	}
 
 	newUser := &domain.User{
@@ -45,18 +44,16 @@ func (s *userServiceImpl) Save(userDto *dto.CreateUserDto) (*domain.User, error)
 
 	user, err := s.userRepo.Save(newUser)
 	if err != nil {
-		fmt.Printf("Error saving user: %v", err)
-		return nil, err
+		logs.Error("duplicate email")
+		return nil, errs.NewBadRequestError("Email already exists")
 	}
 
 	session := &domain.UserSession{
 		UserID: user.ID,
 	}
-
 	_, err = s.userRepo.SaveSession(session)
 	if err != nil {
-		fmt.Printf("Error saving session: %v", err)
-		return nil, err
+		return nil, errs.NewBadRequestError("Error saving session")
 	}
 
 	return user, nil
@@ -84,6 +81,7 @@ func (s *userServiceImpl) FindByUserID(ID uuid.UUID) (*domain.User, error) {
 func (s *userServiceImpl) FindAll() ([]domain.User, error) {
 	users, err := s.userRepo.FindAll()
 	if err != nil {
+		logs.Error(err.Error())
 		return nil, err
 	}
 
@@ -95,6 +93,7 @@ func (s *userServiceImpl) Update(ID uuid.UUID, userDto *dto.UpdateUserDto) (*dom
 	if userDto.Password != "" {
 		hashedPassword, err := utils.HashPassword(userDto.Password)
 		if err != nil {
+			logs.Error("Error hashing password")
 			return nil, err
 		}
 		userDto.Password = *hashedPassword
@@ -102,12 +101,12 @@ func (s *userServiceImpl) Update(ID uuid.UUID, userDto *dto.UpdateUserDto) (*dom
 
 	updateUser := &domain.User{
 		Name:     userDto.Name,
-		Email:    userDto.Email,
 		Password: userDto.Password,
 	}
 
 	users, err := s.userRepo.Update(ID, updateUser)
 	if err != nil {
+		logs.Error(err.Error())
 		return nil, err
 	}
 
