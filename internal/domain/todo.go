@@ -14,33 +14,30 @@ const (
 	Low    Priority = "low"
 )
 
-type TodoState string
-
 const (
-	NotStarted TodoState = "not_started"
-	InProgress TodoState = "in_progress"
-	Done       TodoState = "done"
+	Backlock   string = "BACKLOG"
+	NotStarted string = "TODO"
+	InProgress string = "IN_PROGRESS"
+	Done       string = "DONE"
 )
 
 type Todo struct {
-	ID          uuid.UUID     `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	Title       string        `json:"title" gorm:"not null;type:varchar(50)"`
-	Description string        `json:"description" gorm:"type:text"`
-	State       TodoState     `json:"state" gorm:"default:not_started"`
-	Priority    Priority      `json:"priority" gorm:"default:medium"`
-	IsCompleted *bool         `json:"is_completed" gorm:"default:false"`
-	DueDate     *time.Time    `json:"due_date" gorm:"type:timestamp;default:null"`
-	CategoryID  *uuid.UUID    `json:"category_id" gorm:"type:uuid"`
-	Category    *TodoCategory `json:"category" gorm:"foreignKey:CategoryID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL"`
-	IsDeleted   *bool         `json:"is_deleted" gorm:"default:false"`
-	IsOverdue   *bool         `json:"is_overdue" gorm:"default:false"`
-	UserID      uuid.UUID     `json:"user_id" gorm:"type:uuid;not null"`
-	CreatedAt   time.Time     `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time     `json:"updated_at" gorm:"autoUpdateTime"`
+	ID          uuid.UUID  `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	Title       string     `json:"title" gorm:"not null"`
+	Description string     `json:"description"`
+	StateID     uuid.UUID  `json:"state_id" gorm:"type:uuid;not null;index"`
+	State       string     `json:"state" gorm:"default:not_started;foreignKey:StateID"`
+	Priority    Priority   `json:"priority"`
+	DueDate     *time.Time `json:"due_date" gorm:"type:timestamp;default:null"`
+	IsDeleted   *bool      `json:"is_deleted" gorm:"default:false"`
+	UserID      uuid.UUID  `json:"user_id" gorm:"type:uuid;not null"`
+	User        User       `json:"user"`
+	CreatedAt   time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt   time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
-type TodoCategory struct {
+type TodoState struct {
 	ID     uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	Name   string    `json:"name" gorm:"not null;type:varchar(50)"`
+	Name   string    `json:"name" gorm:"not null;type:varchar(32)"`
 	UserID uuid.UUID `json:"user_id" gorm:"type:uuid;not null"`
 }

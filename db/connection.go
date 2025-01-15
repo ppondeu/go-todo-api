@@ -1,4 +1,4 @@
-package database
+package db
 
 import (
 	"context"
@@ -12,13 +12,13 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-type postgresDatabase struct {
-	Db *gorm.DB
+type database struct {
+	DB *gorm.DB
 }
 
 var (
 	once       sync.Once
-	dbInstance *postgresDatabase
+	dbInstance *database
 )
 
 type sqlLogger struct {
@@ -27,20 +27,20 @@ type sqlLogger struct {
 
 func (s sqlLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql string, rowsAffected int64), err error) {
 	sqlString, _ := fc()
-	fmt.Printf("\n===============================\n%v\n===============================\n", sqlString)
+	fmt.Printf("\n==============================================================\n%v\n==============================================================\n", sqlString)
 }
 
-func NewPostgresDatabase(conf *config.Config) Database {
+func NewDatabase(conf *config.Config) DB {
 	once.Do(func() {
 		dsn := fmt.Sprintf(
 			"host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
-			conf.Database.Host,
-			conf.Database.User,
-			conf.Database.Password,
-			conf.Database.DBName,
-			conf.Database.Port,
-			conf.Database.SSLMode,
-			conf.Database.TimeZone,
+			conf.DB.Host,
+			conf.DB.User,
+			conf.DB.Password,
+			conf.DB.DBName,
+			conf.DB.Port,
+			conf.DB.SSLMode,
+			conf.DB.TimeZone,
 		)
 
 		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
@@ -52,12 +52,11 @@ func NewPostgresDatabase(conf *config.Config) Database {
 
 		db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
 
-		dbInstance = &postgresDatabase{Db: db}
+		dbInstance = &database{DB: db}
 	})
-
 	return dbInstance
 }
 
-func (p *postgresDatabase) GetDb() *gorm.DB {
-	return dbInstance.Db
+func (p *database) GetInstance() *gorm.DB {
+	return dbInstance.DB
 }

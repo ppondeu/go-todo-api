@@ -27,6 +27,7 @@ func ComparePassword(hashedPassword string, password string) error {
 
 	return nil
 }
+
 func ParseTime(timeStr string) (*time.Time, error) {
 	layout := "2006-01-02T15:04-07:00"
 

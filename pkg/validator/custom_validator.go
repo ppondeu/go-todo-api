@@ -8,11 +8,11 @@ import (
 	"github.com/ppondeu/go-todo-api/pkg/logs"
 )
 
-func nullableCategory(fl validator.FieldLevel) bool {
+func nullableTodoStateID(fl validator.FieldLevel) bool {
 	value := fl.Field().String()
 	logs.Info(value)
 	if value == "" {
-		return true 
+		return true
 	}
 
 	_, err := uuid.Parse(value)
@@ -25,11 +25,10 @@ func NullableDueDate(fl validator.FieldLevel) bool {
 	value := fl.Field().String()
 	logs.Info(value)
 	if value == "" {
-		return true 
+		return true
 	}
 
 	_, err := time.Parse(time.RFC3339, value)
 	return err == nil
 
 }
-

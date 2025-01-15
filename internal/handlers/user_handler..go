@@ -1,39 +1,42 @@
-package handler
+package handlers
 
 import (
+	"net/http"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-	"github.com/ppondeu/go-todo-api/internal/usecase"
-	"github.com/ppondeu/go-todo-api/pkg/dto"
+	"github.com/ppondeu/go-todo-api/internal/domain"
+	"github.com/ppondeu/go-todo-api/internal/usecases"
+	"github.com/ppondeu/go-todo-api/pkg/dtos"
 	"github.com/ppondeu/go-todo-api/pkg/errs"
 	"github.com/ppondeu/go-todo-api/pkg/logs"
 	"github.com/ppondeu/go-todo-api/pkg/response"
 )
 
 type UserHandler struct {
-	userService usecase.UserService
+	userService usecases.UserService
 	validator   *validator.Validate
 }
 
-func NewUserHandler(userService usecase.UserService, validator *validator.Validate) *UserHandler {
+func NewUserHandler(userService usecases.UserService, validator *validator.Validate) *UserHandler {
 	return &UserHandler{userService: userService, validator: validator}
 }
 
 func (h *UserHandler) Register(c echo.Context) error {
-	createUserRequest := new(dto.CreateUserDto)
+	createUserRequest := new(dtos.UserCreateDTO)
 	if err := c.Bind(createUserRequest); err != nil {
 		logs.Error(err)
-		return response.NewErrorResponse(c, errs.NewBadRequestError("invalid user id"))
+		return response.NewErrorResponse(c, errs.NewBadRequestError("Invalid user id"))
 	}
 
 	if err := h.validator.Struct(createUserRequest); err != nil {
 		logs.Error(err)
 		if _, ok := err.(*validator.InvalidValidationError); ok {
-			return response.NewErrorResponse(c, errs.NewBadRequestError("invalid field"))
+			return response.NewErrorResponse(c, errs.NewBadRequestError("Invalid field"))
 		}
 
-		return response.NewErrorResponse(c, errs.NewBadRequestError("invalid field"))
+		return response.NewErrorResponse(c, errs.NewBadRequestError("Invalid field"))
 	}
 
 	user, err := h.userService.Save(createUserRequest)
@@ -68,36 +71,36 @@ func (h *UserHandler) GetUser(c echo.Context) error {
 }
 
 func (h *UserHandler) UpdateUser(c echo.Context) error {
-	userID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		return response.NewErrorResponse(c, errs.NewBadRequestError("invalid user id"))
+	user, ok := c.Get("user").(*domain.User)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "User not found in context")
 	}
 
-	updateUserRequest := new(dto.UpdateUserDto)
+	updateUserRequest := new(dtos.UserUpdateDTO)
 	if err := c.Bind(updateUserRequest); err != nil {
-		return response.NewErrorResponse(c, errs.NewBadRequestError("invalid JSON body"))
+		return response.NewErrorResponse(c, errs.NewBadRequestError("Invalid JSON body"))
 	}
 
 	if err := h.validator.Struct(updateUserRequest); err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {
-			return response.NewErrorResponse(c, errs.NewBadRequestError("invalid field"))
+			return response.NewErrorResponse(c, errs.NewBadRequestError("Invalid field"))
 		}
-
-		return response.NewErrorResponse(c, errs.NewInternalError("something wrong while validate body"))
+		logs.Error(err)
+		return response.NewErrorResponse(c, errs.NewBadRequestError("validation error"))
 	}
 
-	user, err := h.userService.Update(userID, updateUserRequest)
+	res, err := h.userService.Update(user.ID, updateUserRequest)
 	if err != nil {
 		return response.NewErrorResponse(c, err)
 	}
 
-	return response.NewSuccessAPIResponse(c, "update user successfully", user)
+	return response.NewSuccessAPIResponse(c, "update user successfully", res)
 }
 
 func (h *UserHandler) DeleteUser(c echo.Context) error {
 	userID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		response.NewErrorResponse(c, errs.NewBadRequestError("invalid user id"))
+		response.NewErrorResponse(c, errs.NewBadRequestError("Invalid user id"))
 	}
 
 	err = h.userService.Delete(userID)
@@ -106,4 +109,14 @@ func (h *UserHandler) DeleteUser(c echo.Context) error {
 	}
 
 	return response.NewSuccessAPIResponse(c, "delete user successfully", nil)
+}
+
+func (h *UserHandler) GetMe(c echo.Context) error {
+	user, ok := c.Get("user").(*domain.User)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "User not found in context")
+	}
+
+	return c.JSON(http.StatusOK, user)
+
 }
