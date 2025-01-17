@@ -26,10 +26,10 @@ type Todo struct {
 	Title       string     `json:"title" gorm:"not null"`
 	Description string     `json:"description"`
 	StateID     uuid.UUID  `json:"state_id" gorm:"type:uuid;not null;index"`
-	State       string     `json:"state" gorm:"default:not_started;foreignKey:StateID"`
+	State       TodoState  `json:"state" gorm:"default:not_started;foreignKey:StateID"`
 	Priority    Priority   `json:"priority"`
 	DueDate     *time.Time `json:"due_date" gorm:"type:timestamp;default:null"`
-	IsDeleted   *bool      `json:"is_deleted" gorm:"default:false"`
+	IsDeleted   bool       `json:"is_deleted" gorm:"default:false"`
 	UserID      uuid.UUID  `json:"user_id" gorm:"type:uuid;not null"`
 	User        User       `json:"user"`
 	CreatedAt   time.Time  `json:"created_at" gorm:"autoCreateTime"`

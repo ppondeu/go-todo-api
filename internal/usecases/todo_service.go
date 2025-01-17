@@ -12,10 +12,12 @@ import (
 type TodoService interface {
 	Create(userID uuid.UUID, newTodo *dtos.CreateTodoDto) (*domain.Todo, error)
 	Update(ID uuid.UUID, updatedTodo *dtos.UpdateTodoDto) (*domain.Todo, error)
+	UpdateTodoState(ID uuid.UUID, updateTodoState *dtos.UpdateTodoState) (*domain.TodoState, error)
 	Delete(ID uuid.UUID) error
 	FindByTodoID(ID uuid.UUID) (*domain.Todo, error)
 	FindByUserID(userID uuid.UUID) ([]domain.Todo, error)
 	FindAll() ([]domain.Todo, error)
+	InitTodoState(ID uuid.UUID) ([]domain.TodoState, error)
 }
 
 type todoServiceImpl struct {
@@ -33,13 +35,14 @@ func (s *todoServiceImpl) Create(userID uuid.UUID, todoDto *dtos.CreateTodoDto) 
 		Title:       todoDto.Title,
 		Description: todoDto.Description,
 		UserID:      userID,
+		StateID:     todoDto.TodoStateID,
 	}
 
 	todo, err := s.todoRepo.Save(newTodo)
 	if err != nil {
-		return nil, err
+		logs.Error(err.Error())
+		return nil, errs.NewBadRequestError(err.Error())
 	}
-
 	return todo, nil
 }
 
@@ -80,6 +83,19 @@ func (s *todoServiceImpl) Update(ID uuid.UUID, todoUpdateDTO *dtos.UpdateTodoDto
 	return todo, nil
 }
 
+func (s *todoServiceImpl) UpdateTodoState(ID uuid.UUID, updateTodoState *dtos.UpdateTodoState) (*domain.TodoState, error) {
+	updateTodoStateField := map[string]interface{}{
+		"name": updateTodoState.Name,
+	}
+	todoStateUpdate, err := s.todoRepo.UpdateTodoState(ID, updateTodoStateField)
+	if err != nil {
+		logs.Error(err)
+		return nil, errs.NewBadRequestError(err.Error())
+	}
+
+	return todoStateUpdate, nil
+}
+
 func (s *todoServiceImpl) Delete(ID uuid.UUID) error {
 	err := s.todoRepo.Delete(ID)
 	if err != nil {
@@ -115,4 +131,14 @@ func (s *todoServiceImpl) FindAll() ([]domain.Todo, error) {
 	}
 
 	return todos, nil
+}
+
+func (s *todoServiceImpl) InitTodoState(ID uuid.UUID) ([]domain.TodoState, error) {
+	todoStates, err := s.todoRepo.InitTodoState(ID)
+	if err != nil {
+		logs.Error(err)
+		return nil, errs.NewBadRequestError(err.Error())
+	}
+
+	return todoStates, nil
 }

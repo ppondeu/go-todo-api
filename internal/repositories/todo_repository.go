@@ -3,6 +3,7 @@ package repositories
 import (
 	"github.com/google/uuid"
 	"github.com/ppondeu/go-todo-api/internal/domain"
+	"github.com/ppondeu/go-todo-api/pkg/logs"
 	"gorm.io/gorm"
 )
 
@@ -13,6 +14,8 @@ type TodoRepository interface {
 	FindByUserID(userID uuid.UUID) ([]domain.Todo, error)
 	Update(ID uuid.UUID, todo map[string]interface{}) (*domain.Todo, error)
 	Delete(ID uuid.UUID) error
+	UpdateTodoState(ID uuid.UUID, todoStateUpdateField map[string]interface{}) (*domain.TodoState, error)
+	InitTodoState(userID uuid.UUID) ([]domain.TodoState, error)
 }
 
 type TodoRepositoryImpl struct {
@@ -26,13 +29,13 @@ func NewTodoRepository(db *gorm.DB) TodoRepository {
 }
 
 func (r *TodoRepositoryImpl) Save(newTodo *domain.Todo) (*domain.Todo, error) {
-	err := r.db.Omit("Category").Create(newTodo).Error
+	err := r.db.Create(newTodo).Error
 	if err != nil {
 		return nil, err
 	}
 
 	var todo domain.Todo
-	err = r.db.Where("id = ?", newTodo.ID).Preload("Category").First(&todo).Error
+	err = r.db.Where("id = ?", newTodo.ID).Preload("State").First(&todo).Error
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +45,7 @@ func (r *TodoRepositoryImpl) Save(newTodo *domain.Todo) (*domain.Todo, error) {
 
 func (r *TodoRepositoryImpl) Find(where interface{}) (*domain.Todo, error) {
 	todo := &domain.Todo{}
-	err := r.db.Where(where).Preload("Category").First(todo).Error
+	err := r.db.Where(where).Preload("State").First(todo).Error
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +55,7 @@ func (r *TodoRepositoryImpl) Find(where interface{}) (*domain.Todo, error) {
 
 func (r *TodoRepositoryImpl) FindAll() ([]domain.Todo, error) {
 	var todos []domain.Todo
-	err := r.db.Preload("Category").Find(&todos).Error
+	err := r.db.Preload("State").Find(&todos).Error
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +65,7 @@ func (r *TodoRepositoryImpl) FindAll() ([]domain.Todo, error) {
 
 func (r *TodoRepositoryImpl) FindByUserID(userID uuid.UUID) ([]domain.Todo, error) {
 	var todos []domain.Todo
-	err := r.db.Where("user_id = ?", userID).Preload("Category").Find(&todos).Error
+	err := r.db.Where("user_id = ?", userID).Preload("State").Find(&todos).Error
 	if err != nil {
 		return nil, err
 	}
@@ -76,12 +79,49 @@ func (r *TodoRepositoryImpl) Update(ID uuid.UUID, todo map[string]interface{}) (
 		return nil, err
 	}
 	var updatedTodo domain.Todo
-	err = r.db.Where("id = ?", ID).Preload("Category").First(&updatedTodo).Error
+	err = r.db.Where("id = ?", ID).Preload("State").First(&updatedTodo).Error
 	if err != nil {
 		return nil, err
 	}
 
 	return &updatedTodo, nil
+}
+
+func (r *TodoRepositoryImpl) UpdateTodoState(ID uuid.UUID, todoStateUpdateField map[string]interface{}) (*domain.TodoState, error) {
+	err := r.db.Model(&domain.TodoState{}).Where("id = ?", ID).Updates(todoStateUpdateField).Error
+	if err != nil {
+		logs.Error(err.Error())
+		return nil, err
+	}
+
+	var todoState domain.TodoState
+	err = r.db.Where("id = ?", ID).First(&todoState).Error
+	if err != nil {
+		logs.Error(err.Error())
+		return nil, err
+	}
+
+	return &todoState, nil
+}
+
+func (r *TodoRepositoryImpl) InitTodoState(userID uuid.UUID) ([]domain.TodoState, error) {
+	states := []string{domain.Backlock, domain.NotStarted, domain.InProgress, domain.Done}
+
+	var todoStates []domain.TodoState
+
+	for _, state := range states {
+		todoStates = append(todoStates, domain.TodoState{
+			Name:   state,
+			UserID: userID,
+		})
+	}
+
+	err := r.db.Create(todoStates).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return todoStates, nil
 }
 
 func (r *TodoRepositoryImpl) Delete(ID uuid.UUID) error {

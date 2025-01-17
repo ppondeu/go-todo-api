@@ -23,11 +23,12 @@ type AuthService interface {
 
 type authServiceImpl struct {
 	userService UserService
+	todoService TodoService
 	jwtService  JWTService
 }
 
-func NewAuthService(userService *UserService, jwtService *JWTService) AuthService {
-	return &authServiceImpl{userService: *userService, jwtService: *jwtService}
+func NewAuthService(userService *UserService, todoService *TodoService, jwtService *JWTService) AuthService {
+	return &authServiceImpl{userService: *userService, todoService: *todoService, jwtService: *jwtService}
 }
 
 func (s *authServiceImpl) Login(loginDto *dtos.UserLoginDTO) (*dtos.AuthResponse, error) {
@@ -63,6 +64,11 @@ func (s *authServiceImpl) Login(loginDto *dtos.UserLoginDTO) (*dtos.AuthResponse
 
 func (s *authServiceImpl) Register(userCreateDTO *dtos.UserCreateDTO) (*dtos.AuthResponse, error) {
 	user, err := s.userService.Save(userCreateDTO)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = s.todoService.InitTodoState(user.ID)
 	if err != nil {
 		return nil, err
 	}

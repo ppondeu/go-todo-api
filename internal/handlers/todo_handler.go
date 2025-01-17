@@ -6,6 +6,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/ppondeu/go-todo-api/internal/domain"
 	"github.com/ppondeu/go-todo-api/internal/usecases"
 	"github.com/ppondeu/go-todo-api/pkg/dtos"
 	"github.com/ppondeu/go-todo-api/pkg/errs"
@@ -26,14 +27,14 @@ func NewTodoHandler(todoService *usecases.TodoService, validator *validator.Vali
 }
 
 func (h *TodoHandler) CreateTodo(c echo.Context) error {
-	userID, err := uuid.Parse(c.Param("userId"))
-	if err != nil {
-		logs.Error(err)
-		return response.NewErrorResponse(c, errs.NewBadRequestError("Invalid user id"))
+	user, ok := c.Get("user").(*domain.User)
+	if !ok {
+		logs.Error("invalid get req.user")
+		return response.NewErrorResponse(c, errs.NewUnauthorizedError("Unauthorized"))
 	}
 
 	createTodoRequest := new(dtos.CreateTodoDto)
-	err = c.Bind(createTodoRequest)
+	err := c.Bind(createTodoRequest)
 	if err != nil {
 		logs.Error(err)
 		return response.NewErrorResponse(c, errs.NewBadRequestError("JSON required"))
@@ -47,7 +48,7 @@ func (h *TodoHandler) CreateTodo(c echo.Context) error {
 
 	logs.Info(createTodoRequest)
 
-	todoRes, err := h.todoService.Create(userID, createTodoRequest)
+	todoRes, err := h.todoService.Create(user.ID, createTodoRequest)
 	if err != nil {
 		return response.NewErrorResponse(c, err)
 	}
@@ -86,6 +87,38 @@ func (h *TodoHandler) UpdateTodo(c echo.Context) error {
 	}
 
 	return response.NewSuccessAPIResponse(c, "update todo successfully", todoRes)
+}
+
+func (h *TodoHandler) UpdateTodoState(c echo.Context) error {
+	todoStateID, err := uuid.Parse(c.Param("stateId"))
+	if err != nil {
+		logs.Error(err)
+		return response.NewErrorResponse(c, errs.NewBadRequestError("Invalid todo id"))
+	}
+
+	updateTodoStateDTO := new(dtos.UpdateTodoState)
+	err = c.Bind(updateTodoStateDTO)
+	if err != nil {
+		logs.Error(err)
+		return response.NewErrorResponse(c, errs.NewBadRequestError("JSON required"))
+	}
+
+	err = h.validator.Struct(updateTodoStateDTO)
+	if err != nil {
+		logs.Error(err)
+		if _, ok := err.(*validator.InvalidValidationError); ok {
+			return response.NewErrorResponse(c, errs.NewBadRequestError("Invalid field"))
+		}
+
+		return response.NewErrorResponse(c, errs.NewInternalError("something went wrong while validate body"))
+	}
+
+	todoRes, err := h.todoService.UpdateTodoState(todoStateID, updateTodoStateDTO)
+	if err != nil {
+		return response.NewErrorResponse(c, err)
+	}
+
+	return response.NewSuccessAPIResponse(c, "update todo state successfully", todoRes)
 }
 
 func (h *TodoHandler) DeleteTodo(c echo.Context) error {
