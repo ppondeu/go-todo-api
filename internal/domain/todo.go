@@ -15,7 +15,7 @@ const (
 )
 
 const (
-	Backlock   string = "BACKLOG"
+	Backlog    string = "BACKLOG"
 	NotStarted string = "TODO"
 	InProgress string = "IN_PROGRESS"
 	Done       string = "DONE"
@@ -27,7 +27,7 @@ type Todo struct {
 	Description string     `json:"description"`
 	StateID     uuid.UUID  `json:"state_id" gorm:"type:uuid;not null;index"`
 	State       TodoState  `json:"state" gorm:"default:not_started;foreignKey:StateID"`
-	Priority    Priority   `json:"priority"`
+	Priority    Priority   `json:"priority" gorm:"default:medium"`
 	DueDate     *time.Time `json:"due_date" gorm:"type:timestamp;default:null"`
 	IsDeleted   bool       `json:"is_deleted" gorm:"default:false"`
 	UserID      uuid.UUID  `json:"user_id" gorm:"type:uuid;not null"`

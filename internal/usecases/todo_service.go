@@ -24,9 +24,9 @@ type todoServiceImpl struct {
 	todoRepo repositories.TodoRepository
 }
 
-func NewTodoService(todoRepo *repositories.TodoRepository) TodoService {
+func NewTodoService(todoRepo repositories.TodoRepository) TodoService {
 	return &todoServiceImpl{
-		todoRepo: *todoRepo,
+		todoRepo: todoRepo,
 	}
 }
 
@@ -62,7 +62,7 @@ func (s *todoServiceImpl) Update(ID uuid.UUID, todoUpdateDTO *dtos.UpdateTodoDto
 	}
 
 	if todoUpdateDTO.TodoStateID != nil {
-		todoUpdate["todo_state_id"] = *todoUpdateDTO.TodoStateID
+		todoUpdate["state_id"] = *todoUpdateDTO.TodoStateID
 	}
 
 	if todoUpdateDTO.DueDate != nil {

@@ -19,9 +19,9 @@ type TodoHandler struct {
 	validator   *validator.Validate
 }
 
-func NewTodoHandler(todoService *usecases.TodoService, validator *validator.Validate) *TodoHandler {
+func NewTodoHandler(todoService usecases.TodoService, validator *validator.Validate) *TodoHandler {
 	return &TodoHandler{
-		todoService: *todoService,
+		todoService: todoService,
 		validator:   validator,
 	}
 }
@@ -46,15 +46,12 @@ func (h *TodoHandler) CreateTodo(c echo.Context) error {
 		return response.NewErrorResponse(c, errs.NewBadRequestError("Invalid field"))
 	}
 
-	logs.Info(createTodoRequest)
-
 	todoRes, err := h.todoService.Create(user.ID, createTodoRequest)
 	if err != nil {
 		return response.NewErrorResponse(c, err)
 	}
 
 	return response.NewCreatedAPIResponse(c, "create todo successfully", todoRes)
-
 }
 
 func (h *TodoHandler) UpdateTodo(c echo.Context) error {

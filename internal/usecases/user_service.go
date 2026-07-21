@@ -25,9 +25,9 @@ type userServiceImpl struct {
 	userRepo repositories.UserRepository
 }
 
-func NewUserService(userRepo *repositories.UserRepository) UserService {
+func NewUserService(userRepo repositories.UserRepository) UserService {
 	return &userServiceImpl{
-		userRepo: *userRepo,
+		userRepo: userRepo,
 	}
 }
 

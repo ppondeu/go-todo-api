@@ -92,10 +92,5 @@ func (r *userRepositoryImpl) UpdateV2(ID uuid.UUID, userUpdateField map[string]i
 }
 
 func (r *userRepositoryImpl) Delete(ID uuid.UUID) error {
-	err := r.db.Where("id = ?", ID).Delete(&domain.User{}).Error
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.db.Where("id = ?", ID).Delete(&domain.User{}).Error
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -39,8 +40,10 @@ func (server *Server) Start(addr string) error {
 
 		<-sigs
 		fmt.Println("\nShutting down gracefully...")
-		if err := server.Echo.Shutdown(context.TODO()); err != nil {
-			server.Echo.Logger.Fatal("Error shutting down server:", err)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := server.Echo.Shutdown(ctx); err != nil {
+			server.Echo.Logger.Error("Error shutting down server:", err)
 		}
 	}()
 
@@ -49,21 +52,21 @@ func (server *Server) Start(addr string) error {
 
 func (server *Server) RegisterRoute(validator *validator.Validate) {
 	userRepo := repositories.NewUserRepository(server.DB)
-	userService := usecases.NewUserService(&userRepo)
+	userService := usecases.NewUserService(userRepo)
 
 	todoRepo := repositories.NewTodoRepository(server.DB)
-	todoService := usecases.NewTodoService(&todoRepo)
+	todoService := usecases.NewTodoService(todoRepo)
 
 	userHandler := handlers.NewUserHandler(userService, validator)
 
-	todoHandler := handlers.NewTodoHandler(&todoService, validator)
+	todoHandler := handlers.NewTodoHandler(todoService, validator)
 
 	jwtService := usecases.NewJwtService([]byte(server.Config.Auth.AccessSecret), []byte(server.Config.Auth.RefreshSecret))
-	authService := usecases.NewAuthService(&userService, &todoService, &jwtService)
-	authHandler := handlers.NewAuthHandler(&authService, validator)
+	authService := usecases.NewAuthService(userService, todoService, jwtService)
+	authHandler := handlers.NewAuthHandler(authService, validator)
 
-	jwtAccessMiddleware := middlewares.JWTAccessMiddleware([]byte(server.Config.Auth.AccessSecret), &userService)
-	jwtRefreshMiddleware := middlewares.JWTRefreshMiddleware([]byte(server.Config.Auth.RefreshSecret), &userService)
+	jwtAccessMiddleware := middlewares.JWTAccessMiddleware([]byte(server.Config.Auth.AccessSecret), userService)
+	jwtRefreshMiddleware := middlewares.JWTRefreshMiddleware([]byte(server.Config.Auth.RefreshSecret), userService)
 
 	routeGroup := server.Echo.Group("/api/v1")
 
@@ -71,9 +74,9 @@ func (server *Server) RegisterRoute(validator *validator.Validate) {
 	userGroup.Use(jwtAccessMiddleware)
 	userGroup.GET("", userHandler.GetUsers)
 	userGroup.GET("/:id", userHandler.GetUser)
-	userGroup.PATCH("/:id", (userHandler.UpdateUser))
+	userGroup.PATCH("/:id", userHandler.UpdateUser)
 	userGroup.DELETE("/:id", userHandler.DeleteUser)
-	userGroup.GET("me", userHandler.GetMe)
+	userGroup.GET("/me", userHandler.GetMe)
 
 	authGroup := routeGroup.Group("/auth")
 	authGroup.POST("/login", authHandler.Login)
@@ -83,10 +86,9 @@ func (server *Server) RegisterRoute(validator *validator.Validate) {
 
 	todoGroup := routeGroup.Group("/todos")
 	todoGroup.Use(jwtAccessMiddleware)
-	todoGroup.GET("/:userId", todoHandler.GetTodosByUser)
 	todoGroup.POST("", todoHandler.CreateTodo)
 	todoGroup.GET("/:userId", todoHandler.GetTodosByUser)
-	todoGroup.PATCH("", todoHandler.UpdateTodo)
+	todoGroup.PATCH("/:id", todoHandler.UpdateTodo)
 	todoGroup.PATCH("/state/:stateId", todoHandler.UpdateTodoState)
 	todoGroup.DELETE("/:id", todoHandler.DeleteTodo)
 }

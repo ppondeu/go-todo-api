@@ -11,9 +11,9 @@ type User struct {
 	Email        string      `json:"email" gorm:"unique;not null;type:varchar(64)"`
 	FirstName    string      `json:"first_name" gorm:"type:varchar(32)"`
 	LastName     string      `json:"last_name" gorm:"type:varchar(32)"`
-	Password     string      `json:"password" gorm:"not null"`
+	Password     string      `json:"-" gorm:"not null"`
 	ImageURL     string      `json:"image_url" gorm:"default:'https://www.gravatar.com/avatar/?d=mp'"`
-	RefreshToken *string     `json:"refresh_token" gorm:"default:null;"`
+	RefreshToken *string     `json:"-" gorm:"default:null"`
 	Todos        []Todo      `json:"todos" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	TodoStates   []TodoState `json:"todo_states" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	CreatedAt    time.Time   `json:"created_at" gorm:"autoCreateTime"`

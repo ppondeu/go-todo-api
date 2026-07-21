@@ -20,30 +20,23 @@ func HashPassword(password string) (*string, error) {
 }
 
 func ComparePassword(hashedPassword string, password string) error {
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 
 func ParseTime(timeStr string) (*time.Time, error) {
-	layout := "2006-01-02T15:04-07:00"
-
-	parsedTime, err := time.Parse(layout, timeStr)
+	parsedTime, err := time.Parse(time.RFC3339, timeStr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid date format: %v", err)
+		return nil, fmt.Errorf("invalid date format: %w", err)
 	}
 
 	return &parsedTime, nil
 }
 
 func ParseUUID(uuidStr string) *uuid.UUID {
-	uuid, err := uuid.Parse(uuidStr)
+	parsedUUID, err := uuid.Parse(uuidStr)
 	if err != nil {
 		return nil
 	}
 
-	return &uuid
+	return &parsedUUID
 }

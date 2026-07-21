@@ -1,5 +1,7 @@
 package errs
 
+import "net/http"
+
 type AppError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -17,21 +19,21 @@ func (e *AppError) Error() string {
 }
 
 func NewNotFoundError(message string) *AppError {
-	return NewAppError(404, message)
+	return NewAppError(http.StatusNotFound, message)
 }
 
 func NewInternalError(message string) *AppError {
-	return NewAppError(500, message)
+	return NewAppError(http.StatusInternalServerError, message)
 }
 
 func NewBadRequestError(message string) *AppError {
-	return NewAppError(400, message)
+	return NewAppError(http.StatusBadRequest, message)
 }
 
 func NewUnauthorizedError(message string) *AppError {
-	return NewAppError(401, message)
+	return NewAppError(http.StatusUnauthorized, message)
 }
 
 func NewForbiddenError(message string) *AppError {
-	return NewAppError(403, message)
+	return NewAppError(http.StatusForbidden, message)
 }
