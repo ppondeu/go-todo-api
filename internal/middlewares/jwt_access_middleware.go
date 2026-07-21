@@ -10,7 +10,7 @@ import (
 	"github.com/ppondeu/go-todo-api/pkg/errs"
 )
 
-func JWTAccessMiddleware(secret []byte, userService *usecases.UserService) echo.MiddlewareFunc {
+func JWTAccessMiddleware(secret []byte, userService usecases.UserService) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			cookie, err := c.Cookie("access_token")
@@ -21,7 +21,7 @@ func JWTAccessMiddleware(secret []byte, userService *usecases.UserService) echo.
 			tokenString := cookie.Value
 
 			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				if token.Method != jwt.SigningMethodHS256 {
 					return nil, errs.NewBadRequestError("unexpected signing method")
 				}
 				return secret, nil
@@ -34,14 +34,17 @@ func JWTAccessMiddleware(secret []byte, userService *usecases.UserService) echo.
 			if !ok {
 				return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token claims")
 			}
-			userIDStr := claims["sub"].(string)
+			userIDStr, ok := claims["sub"].(string)
+			if !ok || userIDStr == "" {
+				return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token subject")
+			}
 
 			userID, err := uuid.Parse(userIDStr)
 			if err != nil {
 				return errs.NewBadRequestError("invalid user id")
 			}
 
-			user, err := (*userService).FindByUserID(userID)
+			user, err := userService.FindByUserID(userID)
 			if err != nil {
 				return echo.NewHTTPError(http.StatusUnauthorized, "User not found")
 			}

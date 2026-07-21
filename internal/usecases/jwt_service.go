@@ -35,7 +35,7 @@ func (s *jwtServiceImpl) SignToken(claims *dtos.UserClaims, secret []byte) (*str
 func (s *jwtServiceImpl) Validate(tokenString string, secret []byte) (*dtos.UserClaims, error) {
 	claims := &dtos.UserClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+		if t.Method != jwt.SigningMethodHS256 {
 			return nil, errs.NewBadRequestError("unexpected signing method")
 		}
 		return secret, nil

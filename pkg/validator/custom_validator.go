@@ -5,12 +5,10 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"github.com/ppondeu/go-todo-api/pkg/logs"
 )
 
 func nullableTodoStateID(fl validator.FieldLevel) bool {
 	value := fl.Field().String()
-	logs.Info(value)
 	if value == "" {
 		return true
 	}
@@ -18,17 +16,14 @@ func nullableTodoStateID(fl validator.FieldLevel) bool {
 	_, err := uuid.Parse(value)
 
 	return err == nil
-
 }
 
-func NullableDueDate(fl validator.FieldLevel) bool {
+func nullableDueDate(fl validator.FieldLevel) bool {
 	value := fl.Field().String()
-	logs.Info(value)
 	if value == "" {
 		return true
 	}
 
 	_, err := time.Parse(time.RFC3339, value)
 	return err == nil
-
 }

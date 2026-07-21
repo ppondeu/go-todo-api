@@ -2,6 +2,7 @@ package logs
 
 import (
 	"fmt"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -20,15 +21,15 @@ func init() {
 	}
 }
 
-func Info(message interface{}, fields ...zapcore.Field) {
+func Info(message any, fields ...zapcore.Field) {
 	log.Info(fmt.Sprintf("%+v", message), fields...)
 }
 
-func Debug(message interface{}, fields ...zapcore.Field) {
+func Debug(message any, fields ...zapcore.Field) {
 	log.Debug(fmt.Sprintf("%+v", message), fields...)
 }
 
-func Error(message interface{}, fields ...zapcore.Field) {
+func Error(message any, fields ...zapcore.Field) {
 	switch v := message.(type) {
 	case error:
 		log.Error(v.Error(), fields...)

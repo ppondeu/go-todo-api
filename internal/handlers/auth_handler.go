@@ -19,8 +19,8 @@ type AuthHandler struct {
 	validator   *v.Validate
 }
 
-func NewAuthHandler(authService *usecases.AuthService, validator *v.Validate) *AuthHandler {
-	return &AuthHandler{authService: *authService, validator: validator}
+func NewAuthHandler(authService usecases.AuthService, validator *v.Validate) *AuthHandler {
+	return &AuthHandler{authService: authService, validator: validator}
 }
 
 func (h *AuthHandler) Login(c echo.Context) error {
@@ -30,8 +30,6 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		logs.Error(err)
 		return response.NewErrorResponse(c, errs.NewBadRequestError("Invalid JSON"))
 	}
-
-	logs.Info(loginRequest)
 
 	err = h.validator.Struct(loginRequest)
 	if err != nil {
@@ -78,7 +76,6 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		logs.Error(err)
 		return response.NewErrorResponse(c, errs.NewBadRequestError("Invalid JSON"))
 	}
-	logs.Info(userUpdateDTO)
 
 	err = h.validator.Struct(userUpdateDTO)
 	if err != nil {
@@ -133,17 +130,19 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 }
 
 func (h *AuthHandler) Logout(c echo.Context) error {
-	logs.Info("\ntest\n")
 	user, ok := c.Get("user").(*domain.User)
 	if !ok {
 		return response.NewErrorResponse(c, errs.NewUnauthorizedError("Unauthorized"))
 	}
 
-	logs.Info(user)
-
 	err := h.authService.Logout(user)
 	if err != nil {
 		return response.NewErrorResponse(c, err)
 	}
+
+	expired := time.Unix(0, 0)
+	c.SetCookie(&http.Cookie{Name: "access_token", Value: "", Path: "/", Expires: expired, MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+	c.SetCookie(&http.Cookie{Name: "refresh_token", Value: "", Path: "/", Expires: expired, MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+
 	return response.NewSuccessAPIResponse(c, "user logged out successfully", nil)
 }

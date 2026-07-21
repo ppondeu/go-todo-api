@@ -18,17 +18,17 @@ type TodoRepository interface {
 	InitTodoState(userID uuid.UUID) ([]domain.TodoState, error)
 }
 
-type TodoRepositoryImpl struct {
+type todoRepository struct {
 	db *gorm.DB
 }
 
 func NewTodoRepository(db *gorm.DB) TodoRepository {
-	return &TodoRepositoryImpl{
+	return &todoRepository{
 		db: db,
 	}
 }
 
-func (r *TodoRepositoryImpl) Save(newTodo *domain.Todo) (*domain.Todo, error) {
+func (r *todoRepository) Save(newTodo *domain.Todo) (*domain.Todo, error) {
 	err := r.db.Create(newTodo).Error
 	if err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func (r *TodoRepositoryImpl) Save(newTodo *domain.Todo) (*domain.Todo, error) {
 	return &todo, nil
 }
 
-func (r *TodoRepositoryImpl) Find(where interface{}) (*domain.Todo, error) {
+func (r *todoRepository) Find(where interface{}) (*domain.Todo, error) {
 	todo := &domain.Todo{}
 	err := r.db.Where(where).Preload("State").First(todo).Error
 	if err != nil {
@@ -53,7 +53,7 @@ func (r *TodoRepositoryImpl) Find(where interface{}) (*domain.Todo, error) {
 	return todo, nil
 }
 
-func (r *TodoRepositoryImpl) FindAll() ([]domain.Todo, error) {
+func (r *todoRepository) FindAll() ([]domain.Todo, error) {
 	var todos []domain.Todo
 	err := r.db.Preload("State").Find(&todos).Error
 	if err != nil {
@@ -63,7 +63,7 @@ func (r *TodoRepositoryImpl) FindAll() ([]domain.Todo, error) {
 	return todos, nil
 }
 
-func (r *TodoRepositoryImpl) FindByUserID(userID uuid.UUID) ([]domain.Todo, error) {
+func (r *todoRepository) FindByUserID(userID uuid.UUID) ([]domain.Todo, error) {
 	var todos []domain.Todo
 	err := r.db.Where("user_id = ?", userID).Preload("State").Find(&todos).Error
 	if err != nil {
@@ -73,7 +73,7 @@ func (r *TodoRepositoryImpl) FindByUserID(userID uuid.UUID) ([]domain.Todo, erro
 	return todos, nil
 }
 
-func (r *TodoRepositoryImpl) Update(ID uuid.UUID, todo map[string]interface{}) (*domain.Todo, error) {
+func (r *todoRepository) Update(ID uuid.UUID, todo map[string]interface{}) (*domain.Todo, error) {
 	err := r.db.Model(&domain.Todo{}).Where("id = ?", ID).Updates(todo).Error
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (r *TodoRepositoryImpl) Update(ID uuid.UUID, todo map[string]interface{}) (
 	return &updatedTodo, nil
 }
 
-func (r *TodoRepositoryImpl) UpdateTodoState(ID uuid.UUID, todoStateUpdateField map[string]interface{}) (*domain.TodoState, error) {
+func (r *todoRepository) UpdateTodoState(ID uuid.UUID, todoStateUpdateField map[string]interface{}) (*domain.TodoState, error) {
 	err := r.db.Model(&domain.TodoState{}).Where("id = ?", ID).Updates(todoStateUpdateField).Error
 	if err != nil {
 		logs.Error(err.Error())
@@ -104,10 +104,10 @@ func (r *TodoRepositoryImpl) UpdateTodoState(ID uuid.UUID, todoStateUpdateField 
 	return &todoState, nil
 }
 
-func (r *TodoRepositoryImpl) InitTodoState(userID uuid.UUID) ([]domain.TodoState, error) {
-	states := []string{domain.Backlock, domain.NotStarted, domain.InProgress, domain.Done}
+func (r *todoRepository) InitTodoState(userID uuid.UUID) ([]domain.TodoState, error) {
+	states := []string{domain.Backlog, domain.NotStarted, domain.InProgress, domain.Done}
 
-	var todoStates []domain.TodoState
+	todoStates := make([]domain.TodoState, 0, len(states))
 
 	for _, state := range states {
 		todoStates = append(todoStates, domain.TodoState{
@@ -124,11 +124,6 @@ func (r *TodoRepositoryImpl) InitTodoState(userID uuid.UUID) ([]domain.TodoState
 	return todoStates, nil
 }
 
-func (r *TodoRepositoryImpl) Delete(ID uuid.UUID) error {
-	err := r.db.Where("id = ?", ID).Delete(&domain.Todo{}).Error
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (r *todoRepository) Delete(ID uuid.UUID) error {
+	return r.db.Where("id = ?", ID).Delete(&domain.Todo{}).Error
 }

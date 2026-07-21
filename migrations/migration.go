@@ -6,8 +6,6 @@ import (
 	"github.com/ppondeu/go-todo-api/internal/domain"
 )
 
-var err error
-
 func main() {
 	cfg := config.LoadConfig()
 
@@ -16,8 +14,7 @@ func main() {
 
 	// err = db.Migrator().DropTable(&domain.User{}, &domain.UserSession{}, &domain.Todo{})
 	// Migrate the schema
-	err = db.AutoMigrate(&domain.User{}, &domain.UserSession{}, &domain.Todo{})
-	if err != nil {
+	if err := db.AutoMigrate(&domain.User{}, &domain.UserSession{}, &domain.Todo{}, &domain.TodoState{}); err != nil {
 		panic(err)
 	}
 }

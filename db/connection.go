@@ -13,7 +13,7 @@ import (
 )
 
 type database struct {
-	DB *gorm.DB
+	db *gorm.DB
 }
 
 var (
@@ -50,13 +50,15 @@ func NewDatabase(conf *config.Config) DB {
 			panic("failed to connect database")
 		}
 
-		db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
+		if err := db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"").Error; err != nil {
+			panic(fmt.Sprintf("failed to create uuid extension: %v", err))
+		}
 
-		dbInstance = &database{DB: db}
+		dbInstance = &database{db: db}
 	})
 	return dbInstance
 }
 
 func (p *database) GetInstance() *gorm.DB {
-	return dbInstance.DB
+	return p.db
 }

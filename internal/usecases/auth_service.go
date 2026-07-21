@@ -17,8 +17,6 @@ type AuthService interface {
 	Register(userCreateDTO *dtos.UserCreateDTO) (*dtos.AuthResponse, error)
 	RefreshToken(token uuid.UUID) (*dtos.TokenResponse, error)
 	Logout(user *domain.User) error
-
-	getTokens(userID string) (*dtos.TokenResponse, error)
 }
 
 type authServiceImpl struct {
@@ -27,8 +25,8 @@ type authServiceImpl struct {
 	jwtService  JWTService
 }
 
-func NewAuthService(userService *UserService, todoService *TodoService, jwtService *JWTService) AuthService {
-	return &authServiceImpl{userService: *userService, todoService: *todoService, jwtService: *jwtService}
+func NewAuthService(userService UserService, todoService TodoService, jwtService JWTService) AuthService {
+	return &authServiceImpl{userService: userService, todoService: todoService, jwtService: jwtService}
 }
 
 func (s *authServiceImpl) Login(loginDto *dtos.UserLoginDTO) (*dtos.AuthResponse, error) {
@@ -101,14 +99,14 @@ func (s *authServiceImpl) RefreshToken(userID uuid.UUID) (*dtos.TokenResponse, e
 	userUpdateField := map[string]interface{}{
 		"refresh_token": tokenResponse.RefreshToken,
 	}
-	s.userService.UpdateRefreshToken(userID, userUpdateField)
+	if err := s.userService.UpdateRefreshToken(userID, userUpdateField); err != nil {
+		return nil, err
+	}
 
 	return tokenResponse, nil
 }
 
 func (s *authServiceImpl) getTokens(userID string) (*dtos.TokenResponse, error) {
-	logs.Info(string(s.jwtService.GetAccess()))
-	logs.Info(string(s.jwtService.GetRefresh()))
 	claims := &dtos.UserClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID,
@@ -140,7 +138,6 @@ func (s *authServiceImpl) getTokens(userID string) (*dtos.TokenResponse, error) 
 }
 
 func (s *authServiceImpl) Logout(user *domain.User) error {
-	logs.Info(user)
 	userUpdateField := map[string]interface{}{
 		"refresh_token": nil,
 	}

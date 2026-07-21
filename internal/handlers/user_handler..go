@@ -59,12 +59,12 @@ func (h *UserHandler) GetUsers(c echo.Context) error {
 func (h *UserHandler) GetUser(c echo.Context) error {
 	userID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		response.NewErrorResponse(c, errs.NewBadRequestError("invalid user id"))
+		return response.NewErrorResponse(c, errs.NewBadRequestError("invalid user id"))
 	}
 
 	user, err := h.userService.FindByUserID(userID)
 	if err != nil {
-		response.NewErrorResponse(c, err)
+		return response.NewErrorResponse(c, err)
 	}
 
 	return response.NewSuccessAPIResponse(c, "get user successfully", user)
@@ -100,7 +100,7 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 func (h *UserHandler) DeleteUser(c echo.Context) error {
 	userID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		response.NewErrorResponse(c, errs.NewBadRequestError("Invalid user id"))
+		return response.NewErrorResponse(c, errs.NewBadRequestError("Invalid user id"))
 	}
 
 	err = h.userService.Delete(userID)
@@ -118,5 +118,4 @@ func (h *UserHandler) GetMe(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, user)
-
 }

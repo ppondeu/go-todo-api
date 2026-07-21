@@ -8,12 +8,12 @@ import (
 )
 
 type APIResponse struct {
-	StatusCode int         `json:"statusCode"`
-	Message    string      `json:"message"`
-	Data       interface{} `json:"data,omitempty"`
+	StatusCode int    `json:"statusCode"`
+	Message    string `json:"message"`
+	Data       any    `json:"data,omitempty"`
 }
 
-func NewAPIResponse(c echo.Context, statusCode int, message string, data interface{}) error {
+func NewAPIResponse(c echo.Context, statusCode int, message string, data any) error {
 	response := APIResponse{
 		StatusCode: statusCode,
 		Message:    message,
@@ -28,14 +28,14 @@ func NewErrorResponse(c echo.Context, err error) error {
 	case *errs.AppError:
 		return NewAPIResponse(c, e.Code, e.Message, nil)
 	default:
-		return NewAPIResponse(c, http.StatusInternalServerError, "An unexpected error occurred", nil)
+		return NewAPIResponse(c, http.StatusInternalServerError, "an unexpected error occurred", nil)
 	}
 }
 
-func NewSuccessAPIResponse(c echo.Context, message string, data interface{}) error {
+func NewSuccessAPIResponse(c echo.Context, message string, data any) error {
 	return NewAPIResponse(c, http.StatusOK, message, data)
 }
 
-func NewCreatedAPIResponse(c echo.Context, message string, data interface{}) error {
+func NewCreatedAPIResponse(c echo.Context, message string, data any) error {
 	return NewAPIResponse(c, http.StatusCreated, message, data)
 }
