@@ -1,144 +1,171 @@
 package usecases
 
 import (
+	"context"
+	"errors"
+
 	"github.com/google/uuid"
+	"github.com/ppondeu/go-todo-api/internal/application/ports"
 	"github.com/ppondeu/go-todo-api/internal/domain"
-	"github.com/ppondeu/go-todo-api/internal/repositories"
 	"github.com/ppondeu/go-todo-api/pkg/dtos"
 	"github.com/ppondeu/go-todo-api/pkg/errs"
-	"github.com/ppondeu/go-todo-api/pkg/logs"
+	"github.com/ppondeu/go-todo-api/pkg/utils"
 )
 
 type TodoService interface {
-	Create(userID uuid.UUID, newTodo *dtos.CreateTodoDto) (*domain.Todo, error)
-	Update(ID uuid.UUID, updatedTodo *dtos.UpdateTodoDto) (*domain.Todo, error)
-	UpdateTodoState(ID uuid.UUID, updateTodoState *dtos.UpdateTodoState) (*domain.TodoState, error)
-	Delete(ID uuid.UUID) error
-	FindByTodoID(ID uuid.UUID) (*domain.Todo, error)
-	FindByUserID(userID uuid.UUID) ([]domain.Todo, error)
-	FindAll() ([]domain.Todo, error)
-	InitTodoState(ID uuid.UUID) ([]domain.TodoState, error)
+	Create(context.Context, uuid.UUID, *dtos.CreateTodoDto) (*domain.Todo, error)
+	Update(context.Context, uuid.UUID, uuid.UUID, *dtos.UpdateTodoDto) (*domain.Todo, error)
+	UpdateTodoState(context.Context, uuid.UUID, uuid.UUID, *dtos.UpdateTodoState) (*domain.TodoState, error)
+	Delete(context.Context, uuid.UUID, uuid.UUID) error
+	FindByTodoID(context.Context, uuid.UUID, uuid.UUID) (*domain.Todo, error)
+	FindByUserID(context.Context, uuid.UUID) ([]domain.Todo, error)
+	List(context.Context, uuid.UUID, ports.TodoListFilter) (*ports.TodoPage, error)
+	InitTodoState(uuid.UUID) ([]domain.TodoState, error)
 }
 
 type todoServiceImpl struct {
-	todoRepo repositories.TodoRepository
+	todoRepo ports.TodoRepository
 }
 
-func NewTodoService(todoRepo repositories.TodoRepository) TodoService {
-	return &todoServiceImpl{
-		todoRepo: todoRepo,
-	}
+func NewTodoService(todoRepo ports.TodoRepository) TodoService {
+	return &todoServiceImpl{todoRepo: todoRepo}
 }
 
-func (s *todoServiceImpl) Create(userID uuid.UUID, todoDto *dtos.CreateTodoDto) (*domain.Todo, error) {
-	newTodo := &domain.Todo{
-		Title:       todoDto.Title,
-		Description: todoDto.Description,
-		UserID:      userID,
-		StateID:     todoDto.TodoStateID,
+func (s *todoServiceImpl) Create(ctx context.Context, userID uuid.UUID, dto *dtos.CreateTodoDto) (*domain.Todo, error) {
+	if _, err := s.todoRepo.FindStateByID(ctx, userID, dto.TodoStateID); err != nil {
+		return nil, mapTodoError(err)
 	}
 
-	todo, err := s.todoRepo.Save(newTodo)
+	todo, err := s.todoRepo.Save(ctx, userID, &domain.Todo{
+		Title:       dto.Title,
+		Description: dto.Description,
+		StateID:     dto.TodoStateID,
+	})
 	if err != nil {
-		logs.Error(err.Error())
-		return nil, errs.NewBadRequestError(err.Error())
+		return nil, errs.NewInternalError("could not create todo")
 	}
+
 	return todo, nil
 }
 
-func (s *todoServiceImpl) Update(ID uuid.UUID, todoUpdateDTO *dtos.UpdateTodoDto) (*domain.Todo, error) {
-	todoUpdate := map[string]interface{}{}
-
-	if todoUpdateDTO.Title != nil {
-		todoUpdate["title"] = *todoUpdateDTO.Title
+func (s *todoServiceImpl) Update(ctx context.Context, userID, todoID uuid.UUID, dto *dtos.UpdateTodoDto) (*domain.Todo, error) {
+	fields := make(map[string]any)
+	if dto.Title != nil {
+		fields["title"] = *dto.Title
 	}
-
-	if todoUpdateDTO.Description != nil {
-		todoUpdate["description"] = *todoUpdateDTO.Description
+	if dto.Description != nil {
+		fields["description"] = *dto.Description
 	}
-
-	if todoUpdateDTO.Priority != nil {
-		todoUpdate["priority"] = *todoUpdateDTO.Priority
+	if dto.Priority != nil {
+		fields["priority"] = *dto.Priority
 	}
-
-	if todoUpdateDTO.TodoStateID != nil {
-		todoUpdate["state_id"] = *todoUpdateDTO.TodoStateID
+	if dto.TodoStateID != nil {
+		stateID, err := uuid.Parse(*dto.TodoStateID)
+		if err != nil {
+			return nil, errs.NewBadRequestError("invalid todo state id")
+		}
+		if _, err := s.todoRepo.FindStateByID(ctx, userID, stateID); err != nil {
+			return nil, mapTodoError(err)
+		}
+		fields["state_id"] = stateID
 	}
-
-	if todoUpdateDTO.DueDate != nil {
-		if *todoUpdateDTO.DueDate == "" {
-			todoUpdate["due_date"] = nil
+	if dto.DueDate != nil {
+		if *dto.DueDate == "" {
+			fields["due_date"] = nil
 		} else {
-			todoUpdate["due_date"] = *todoUpdateDTO.DueDate
+			dueDate, err := utils.ParseTime(*dto.DueDate)
+			if err != nil {
+				return nil, errs.NewBadRequestError("invalid due date")
+			}
+			fields["due_date"] = dueDate
 		}
 	}
+	if len(fields) == 0 {
+		return nil, errs.NewBadRequestError("at least one field is required")
+	}
 
-	logs.Info(todoUpdate)
-
-	todo, err := s.todoRepo.Update(ID, todoUpdate)
+	todo, err := s.todoRepo.Update(ctx, userID, todoID, fields)
 	if err != nil {
-		return nil, err
+		return nil, mapTodoError(err)
 	}
 
 	return todo, nil
 }
 
-func (s *todoServiceImpl) UpdateTodoState(ID uuid.UUID, updateTodoState *dtos.UpdateTodoState) (*domain.TodoState, error) {
-	updateTodoStateField := map[string]interface{}{
-		"name": updateTodoState.Name,
-	}
-	todoStateUpdate, err := s.todoRepo.UpdateTodoState(ID, updateTodoStateField)
+func (s *todoServiceImpl) UpdateTodoState(ctx context.Context, userID, stateID uuid.UUID, dto *dtos.UpdateTodoState) (*domain.TodoState, error) {
+	state, err := s.todoRepo.UpdateTodoState(ctx, userID, stateID, map[string]any{"name": dto.Name})
 	if err != nil {
-		logs.Error(err)
-		return nil, errs.NewBadRequestError(err.Error())
+		return nil, mapTodoError(err)
 	}
 
-	return todoStateUpdate, nil
+	return state, nil
 }
 
-func (s *todoServiceImpl) Delete(ID uuid.UUID) error {
-	err := s.todoRepo.Delete(ID)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (s *todoServiceImpl) Delete(ctx context.Context, userID, todoID uuid.UUID) error {
+	return mapTodoError(s.todoRepo.Delete(ctx, userID, todoID))
 }
 
-func (s *todoServiceImpl) FindByTodoID(ID uuid.UUID) (*domain.Todo, error) {
-	todo, err := s.todoRepo.Find(ID)
+func (s *todoServiceImpl) FindByTodoID(ctx context.Context, userID, todoID uuid.UUID) (*domain.Todo, error) {
+	todo, err := s.todoRepo.FindByID(ctx, userID, todoID)
 	if err != nil {
-		return nil, err
+		return nil, mapTodoError(err)
 	}
-
 	return todo, nil
 }
 
-func (s *todoServiceImpl) FindByUserID(userID uuid.UUID) ([]domain.Todo, error) {
-	todos, err := s.todoRepo.FindByUserID(userID)
+func (s *todoServiceImpl) FindByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Todo, error) {
+	todos, err := s.todoRepo.FindByUserID(ctx, userID)
 	if err != nil {
-		logs.Error(err)
-		return nil, errs.NewBadRequestError("user not found")
+		return nil, errs.NewInternalError("could not list todos")
 	}
-
 	return todos, nil
 }
 
-func (s *todoServiceImpl) FindAll() ([]domain.Todo, error) {
-	todos, err := s.todoRepo.FindAll()
-	if err != nil {
-		return nil, err
+func (s *todoServiceImpl) List(ctx context.Context, userID uuid.UUID, filter ports.TodoListFilter) (*ports.TodoPage, error) {
+	if filter.Page < 1 || filter.Limit < 1 || filter.Limit > 100 {
+		return nil, errs.NewBadRequestError("invalid pagination")
+	}
+	if !validTodoSort(filter.Sort) || (filter.Order != "asc" && filter.Order != "desc") {
+		return nil, errs.NewBadRequestError("invalid sorting")
+	}
+	if filter.DueFrom != nil && filter.DueTo != nil && filter.DueFrom.After(*filter.DueTo) {
+		return nil, errs.NewBadRequestError("invalid due date range")
 	}
 
-	return todos, nil
+	page, err := s.todoRepo.List(ctx, userID, filter)
+	if err != nil {
+		return nil, errs.NewInternalError("could not list todos")
+	}
+	return page, nil
 }
 
-func (s *todoServiceImpl) InitTodoState(ID uuid.UUID) ([]domain.TodoState, error) {
-	todoStates, err := s.todoRepo.InitTodoState(ID)
+func validTodoSort(sort string) bool {
+	switch sort {
+	case "created_at", "updated_at", "due_date", "priority", "title":
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *todoServiceImpl) InitTodoState(userID uuid.UUID) ([]domain.TodoState, error) {
+	states, err := s.todoRepo.InitTodoState(userID)
 	if err != nil {
-		logs.Error(err)
-		return nil, errs.NewBadRequestError(err.Error())
+		return nil, errs.NewInternalError("could not initialize todo states")
+	}
+	return states, nil
+}
+
+func mapTodoError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, domain.ErrTodoNotFound) {
+		return errs.NewNotFoundError("todo not found")
+	}
+	if errors.Is(err, domain.ErrTodoStateNotFound) {
+		return errs.NewNotFoundError("todo state not found")
 	}
 
-	return todoStates, nil
+	return errs.NewInternalError("todo operation failed")
 }

@@ -90,6 +90,7 @@ func (server *Server) RegisterRoute(validator *validator.Validate) {
 	todoGroup.Use(jwtAccessMiddleware)
 	todoGroup.Use(sessionRateLimiter)
 	todoGroup.POST("", todoHandler.CreateTodo)
+	todoGroup.GET("", todoHandler.ListTodos)
 	todoGroup.GET("/:userId", todoHandler.GetTodosByUser)
 	todoGroup.PATCH("/:id", todoHandler.UpdateTodo)
 	todoGroup.PATCH("/state/:stateId", todoHandler.UpdateTodoState)
