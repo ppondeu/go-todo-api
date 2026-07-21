@@ -1798,3 +1798,117 @@ The agent must never:
 * Bypass architecture boundaries for convenience
 * Put business logic inside Echo handlers
 * Put Echo or database dependencies inside the domain
+
+# Sensitive Data Policy
+
+The agent must never:
+
+- Store secrets in memory outside the current task.
+- Copy sensitive data into documentation.
+- Include secrets in commit messages.
+- Include secrets in pull request descriptions.
+- Echo secrets unless explicitly requested.
+- Persist credentials into generated files.
+
+Sensitive data includes but is not limited to:
+
+- API Keys
+- Access Tokens
+- Refresh Tokens
+- JWT Tokens
+- OAuth Credentials
+- Client Secrets
+- Database Passwords
+- Connection Strings
+- SSH Private Keys
+- AWS Credentials
+- GCP Credentials
+- Azure Credentials
+- Encryption Keys
+- OTP Codes
+- Session Cookies
+- Authorization Headers
+- Personal Information (PII)
+- Production URLs containing credentials
+
+When sensitive data is encountered:
+
+- Redact it when displaying examples.
+- Replace with placeholders such as:
+  - <API_KEY>
+  - <ACCESS_TOKEN>
+  - <PASSWORD>
+  - <JWT_TOKEN>
+
+Never memorize, persist, or reuse sensitive values from previous conversations.
+Treat all secrets as ephemeral.
+
+# Git Commit Convention
+
+Follow Conventional Commits.
+
+Allowed commit types:
+
+- feat
+- fix
+- refactor
+- test
+- docs
+- style
+- perf
+- build
+- ci
+- chore
+- revert
+
+Format:
+
+<type>(<scope>): <summary>
+
+Examples:
+
+feat(auth): add OTP verification endpoint
+
+fix(auth): prevent OTP verification bypass
+
+refactor(repository): simplify user query mapping
+
+test(user): add service unit tests
+
+docs(api): update authentication guide
+
+perf(cache): optimize policy lookup
+
+Summary rules:
+
+- imperative mood
+- lowercase
+- under 72 characters
+- no period at the end
+- describe why when appropriate
+
+Before committing:
+
+1. Show the proposed commit message.
+2. Wait for user approval.
+3. Stage only approved files.
+4. Create exactly one focused commit unless instructed otherwise.
+
+# Branch Policy
+
+Never switch branches automatically.
+
+Never create a branch unless explicitly requested.
+
+Never merge branches automatically.
+
+Never rebase automatically.
+
+Never add or upgrade dependencies without approval.
+
+If a new dependency is required:
+
+- explain why
+- compare alternatives
+- estimate impact
+- wait for approval
