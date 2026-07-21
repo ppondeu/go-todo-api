@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -8,15 +9,14 @@ import (
 	"github.com/ppondeu/go-todo-api/internal/domain"
 	"github.com/ppondeu/go-todo-api/pkg/dtos"
 	"github.com/ppondeu/go-todo-api/pkg/errs"
-	"github.com/ppondeu/go-todo-api/pkg/logs"
 	"github.com/ppondeu/go-todo-api/pkg/utils"
 )
 
 type AuthService interface {
-	Login(loginDto *dtos.UserLoginDTO) (*dtos.AuthResponse, error)
-	Register(userCreateDTO *dtos.UserCreateDTO) (*dtos.AuthResponse, error)
-	RefreshToken(token uuid.UUID) (*dtos.TokenResponse, error)
-	Logout(user *domain.User) error
+	Login(context.Context, *dtos.UserLoginDTO) (*dtos.AuthResponse, error)
+	Register(context.Context, *dtos.UserCreateDTO) (*dtos.AuthResponse, error)
+	RefreshToken(context.Context, uuid.UUID) (*dtos.TokenResponse, error)
+	Logout(context.Context, *domain.User) error
 }
 
 type authServiceImpl struct {
@@ -29,122 +29,75 @@ func NewAuthService(userService UserService, todoService TodoService, jwtService
 	return &authServiceImpl{userService: userService, todoService: todoService, jwtService: jwtService}
 }
 
-func (s *authServiceImpl) Login(loginDto *dtos.UserLoginDTO) (*dtos.AuthResponse, error) {
-	user, err := s.userService.FindByEmail(loginDto.Email)
-	if err != nil {
-		logs.Error(err)
+func (s *authServiceImpl) Login(ctx context.Context, dto *dtos.UserLoginDTO) (*dtos.AuthResponse, error) {
+	user, err := s.userService.FindByEmail(ctx, dto.Email)
+	if err != nil || utils.ComparePassword(user.Password, dto.Password) != nil {
 		return nil, errs.NewBadRequestError("email or password doesn't match")
 	}
 
-	err = utils.ComparePassword(user.Password, loginDto.Password)
-	if err != nil {
-		logs.Error(err)
-		return nil, errs.NewBadRequestError("email or password doesn't match")
-	}
-
-	tokenResponse, err := s.RefreshToken(user.ID)
+	tokens, err := s.RefreshToken(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	authResponse := &dtos.AuthResponse{
-		User: dtos.UserResponse{
-			ID:        user.ID,
-			FirstName: user.FirstName,
-			LastName:  user.LastName,
-			Email:     user.Email,
-		},
-		Token: *tokenResponse,
-	}
-
-	return authResponse, nil
+	return &dtos.AuthResponse{User: mapUserResponse(user), Token: *tokens}, nil
 }
 
-func (s *authServiceImpl) Register(userCreateDTO *dtos.UserCreateDTO) (*dtos.AuthResponse, error) {
-	user, err := s.userService.Save(userCreateDTO)
+func (s *authServiceImpl) Register(ctx context.Context, dto *dtos.UserCreateDTO) (*dtos.AuthResponse, error) {
+	user, err := s.userService.Save(ctx, dto)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.todoService.InitTodoState(ctx, user.ID); err != nil {
+		return nil, err
+	}
+
+	tokens, err := s.RefreshToken(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = s.todoService.InitTodoState(user.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	tokenResponse, err := s.RefreshToken(user.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	authResponse := &dtos.AuthResponse{
-		User: dtos.UserResponse{
-			ID:        user.ID,
-			FirstName: user.FirstName,
-			LastName:  user.LastName,
-			Email:     user.Email,
-		},
-		Token: *tokenResponse,
-	}
-
-	return authResponse, nil
+	return &dtos.AuthResponse{User: mapUserResponse(user), Token: *tokens}, nil
 }
 
-func (s *authServiceImpl) RefreshToken(userID uuid.UUID) (*dtos.TokenResponse, error) {
-
-	tokenResponse, err := s.getTokens(userID.String())
+func (s *authServiceImpl) RefreshToken(ctx context.Context, userID uuid.UUID) (*dtos.TokenResponse, error) {
+	tokens, err := s.getTokens(userID.String())
 	if err != nil {
 		return nil, err
 	}
-
-	userUpdateField := map[string]interface{}{
-		"refresh_token": tokenResponse.RefreshToken,
-	}
-	if err := s.userService.UpdateRefreshToken(userID, userUpdateField); err != nil {
+	if err := s.userService.UpdateRefreshToken(ctx, userID, &tokens.RefreshToken); err != nil {
 		return nil, err
 	}
-
-	return tokenResponse, nil
+	return tokens, nil
 }
 
 func (s *authServiceImpl) getTokens(userID string) (*dtos.TokenResponse, error) {
-	claims := &dtos.UserClaims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   userID,
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 15)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-	}
-
+	claims := &dtos.UserClaims{RegisteredClaims: jwt.RegisteredClaims{
+		Subject: userID, ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)), IssuedAt: jwt.NewNumericDate(time.Now()),
+	}}
 	accessToken, err := s.jwtService.SignToken(claims, s.jwtService.GetAccess())
 	if err != nil {
-		logs.Error(err)
-		return nil, err
+		return nil, errs.NewInternalError("could not create access token")
 	}
 
-	claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 7))
-
+	claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour))
 	refreshToken, err := s.jwtService.SignToken(claims, s.jwtService.GetRefresh())
 	if err != nil {
-		logs.Error(err)
-		return nil, err
+		return nil, errs.NewInternalError("could not create refresh token")
 	}
 
-	tokenResponse := &dtos.TokenResponse{
-		AccessToken:  *accessToken,
-		RefreshToken: *refreshToken,
-	}
-
-	return tokenResponse, nil
+	return &dtos.TokenResponse{AccessToken: *accessToken, RefreshToken: *refreshToken}, nil
 }
 
-func (s *authServiceImpl) Logout(user *domain.User) error {
-	userUpdateField := map[string]interface{}{
-		"refresh_token": nil,
-	}
-	err := s.userService.UpdateRefreshToken(user.ID, userUpdateField)
-	if err != nil {
+func (s *authServiceImpl) Logout(ctx context.Context, user *domain.User) error {
+	if err := s.userService.UpdateRefreshToken(ctx, user.ID, nil); err != nil {
 		return errs.NewBadRequestError("logout failed")
 	}
-
 	return nil
+}
+
+func mapUserResponse(user *domain.User) dtos.UserResponse {
+	return dtos.UserResponse{
+		ID: user.ID, Email: user.Email, FirstName: user.FirstName, LastName: user.LastName, ImageURL: user.ImageURL,
+	}
 }

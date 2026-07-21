@@ -37,3 +37,7 @@ func NewUnauthorizedError(message string) *AppError {
 func NewForbiddenError(message string) *AppError {
 	return NewAppError(http.StatusForbidden, message)
 }
+
+func NewConflictError(message string) *AppError {
+	return NewAppError(http.StatusConflict, message)
+}

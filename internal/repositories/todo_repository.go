@@ -175,14 +175,14 @@ func (r *todoRepository) UpdateTodoState(ctx context.Context, userID, stateID uu
 	return r.FindStateByID(ctx, userID, stateID)
 }
 
-func (r *todoRepository) InitTodoState(userID uuid.UUID) ([]domain.TodoState, error) {
+func (r *todoRepository) InitTodoState(ctx context.Context, userID uuid.UUID) ([]domain.TodoState, error) {
 	states := []string{domain.Backlog, domain.NotStarted, domain.InProgress, domain.Done}
 	todoStates := make([]domain.TodoState, 0, len(states))
 	for _, state := range states {
 		todoStates = append(todoStates, domain.TodoState{Name: state, UserID: userID})
 	}
 
-	if err := r.db.Create(todoStates).Error; err != nil {
+	if err := r.db.WithContext(ctx).Create(todoStates).Error; err != nil {
 		return nil, err
 	}
 

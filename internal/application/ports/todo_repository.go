@@ -37,5 +37,5 @@ type TodoRepository interface {
 	Delete(ctx context.Context, userID, todoID uuid.UUID) error
 	FindStateByID(ctx context.Context, userID, stateID uuid.UUID) (*domain.TodoState, error)
 	UpdateTodoState(ctx context.Context, userID, stateID uuid.UUID, fields map[string]any) (*domain.TodoState, error)
-	InitTodoState(userID uuid.UUID) ([]domain.TodoState, error)
+	InitTodoState(ctx context.Context, userID uuid.UUID) ([]domain.TodoState, error)
 }

@@ -40,7 +40,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		return response.NewErrorResponse(c, errs.NewBadRequestError("Field required"))
 	}
 
-	res, err := h.authService.Login(loginRequest)
+	res, err := h.authService.Login(c.Request().Context(), loginRequest)
 	if err != nil {
 		return response.NewErrorResponse(c, err)
 	}
@@ -86,7 +86,7 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		return response.NewErrorResponse(c, errs.NewBadRequestError("Field required"))
 	}
 
-	res, err := h.authService.Register(userUpdateDTO)
+	res, err := h.authService.Register(c.Request().Context(), userUpdateDTO)
 	if err != nil {
 		return response.NewErrorResponse(c, err)
 	}
@@ -121,7 +121,7 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		return response.NewErrorResponse(c, errs.NewUnauthorizedError("Unauthorized"))
 	}
 
-	tokenResponse, err := h.authService.RefreshToken(user.ID)
+	tokenResponse, err := h.authService.RefreshToken(c.Request().Context(), user.ID)
 	if err != nil {
 		return response.NewErrorResponse(c, err)
 	}
@@ -135,14 +135,18 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 		return response.NewErrorResponse(c, errs.NewUnauthorizedError("Unauthorized"))
 	}
 
-	err := h.authService.Logout(user)
+	err := h.authService.Logout(c.Request().Context(), user)
 	if err != nil {
 		return response.NewErrorResponse(c, err)
 	}
 
+	clearAuthCookies(c)
+
+	return response.NewSuccessAPIResponse(c, "user logged out successfully", nil)
+}
+
+func clearAuthCookies(c echo.Context) {
 	expired := time.Unix(0, 0)
 	c.SetCookie(&http.Cookie{Name: "access_token", Value: "", Path: "/", Expires: expired, MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 	c.SetCookie(&http.Cookie{Name: "refresh_token", Value: "", Path: "/", Expires: expired, MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteLaxMode})
-
-	return response.NewSuccessAPIResponse(c, "user logged out successfully", nil)
 }

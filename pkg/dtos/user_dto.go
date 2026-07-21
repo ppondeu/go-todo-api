@@ -8,9 +8,9 @@ type UserCreateDTO struct {
 }
 
 type UserUpdateDTO struct {
-	FirstName string `json:"first_name" validate:"omitempty"`
-	LastName  string `json:"last_name" validate:"omitempty"`
-	Password  string `json:"password" validate:"omitempty,min=6"`
+	FirstName *string `json:"first_name" validate:"omitempty,max=32"`
+	LastName  *string `json:"last_name" validate:"omitempty,max=32"`
+	Password  *string `json:"password" validate:"omitempty,min=6"`
 }
 
 type UserResponse struct {
@@ -18,4 +18,5 @@ type UserResponse struct {
 	Email     string    `json:"email"`
 	FirstName string    `json:"first_name"`
 	LastName  string    `json:"last_name"`
+	ImageURL  string    `json:"image_url"`
 }

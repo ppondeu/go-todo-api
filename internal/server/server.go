@@ -74,11 +74,9 @@ func (server *Server) RegisterRoute(validator *validator.Validate) {
 	userGroup := routeGroup.Group("/users")
 	userGroup.Use(jwtAccessMiddleware)
 	userGroup.Use(sessionRateLimiter)
-	userGroup.GET("", userHandler.GetUsers)
-	userGroup.GET("/:id", userHandler.GetUser)
-	userGroup.PATCH("/:id", userHandler.UpdateUser)
-	userGroup.DELETE("/:id", userHandler.DeleteUser)
 	userGroup.GET("/me", userHandler.GetMe)
+	userGroup.PATCH("/me", userHandler.UpdateMe)
+	userGroup.DELETE("/me", userHandler.DeleteMe)
 
 	authGroup := routeGroup.Group("/auth")
 	authGroup.POST("/login", authHandler.Login)

@@ -58,7 +58,7 @@ func (f *fakeTodoRepository) FindStateByID(context.Context, uuid.UUID, uuid.UUID
 func (f *fakeTodoRepository) UpdateTodoState(context.Context, uuid.UUID, uuid.UUID, map[string]any) (*domain.TodoState, error) {
 	return &domain.TodoState{}, nil
 }
-func (f *fakeTodoRepository) InitTodoState(uuid.UUID) ([]domain.TodoState, error) {
+func (f *fakeTodoRepository) InitTodoState(context.Context, uuid.UUID) ([]domain.TodoState, error) {
 	return []domain.TodoState{}, nil
 }
 

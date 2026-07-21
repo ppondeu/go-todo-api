@@ -42,7 +42,7 @@ func (f *fakeTodoService) List(ctx context.Context, userID uuid.UUID, filter por
 	f.gotContext, f.gotUserID, f.gotFilter = ctx, userID, filter
 	return f.listPage, nil
 }
-func (f *fakeTodoService) InitTodoState(uuid.UUID) ([]domain.TodoState, error) {
+func (f *fakeTodoService) InitTodoState(context.Context, uuid.UUID) ([]domain.TodoState, error) {
 	return []domain.TodoState{}, nil
 }
 

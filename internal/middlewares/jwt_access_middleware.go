@@ -44,7 +44,7 @@ func JWTAccessMiddleware(secret []byte, userService usecases.UserService) echo.M
 				return errs.NewBadRequestError("invalid user id")
 			}
 
-			user, err := userService.FindByUserID(userID)
+			user, err := userService.FindByUserID(c.Request().Context(), userID)
 			if err != nil {
 				return echo.NewHTTPError(http.StatusUnauthorized, "User not found")
 			}
