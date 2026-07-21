@@ -1,10 +1,10 @@
 package db
 
 import (
-	"context"
 	"fmt"
+	"log"
+	"os"
 	"sync"
-	"time"
 
 	"github.com/ppondeu/go-todo-api/config"
 	"gorm.io/driver/postgres"
@@ -21,15 +21,6 @@ var (
 	dbInstance *database
 )
 
-type sqlLogger struct {
-	logger.Interface
-}
-
-func (s sqlLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql string, rowsAffected int64), err error) {
-	sqlString, _ := fc()
-	fmt.Printf("\n==============================================================\n%v\n==============================================================\n", sqlString)
-}
-
 func NewDatabase(conf *config.Config) DB {
 	once.Do(func() {
 		dsn := fmt.Sprintf(
@@ -43,8 +34,13 @@ func NewDatabase(conf *config.Config) DB {
 			conf.DB.TimeZone,
 		)
 
+		gormLogger := logger.New(log.New(os.Stdout, "", log.LstdFlags), logger.Config{
+			LogLevel:             logger.Warn,
+			ParameterizedQueries: true,
+		})
 		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-			Logger: sqlLogger{logger.Default.LogMode(logger.Info)},
+			Logger:         gormLogger,
+			TranslateError: true,
 		})
 		if err != nil {
 			panic("failed to connect database")

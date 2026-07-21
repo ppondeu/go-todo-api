@@ -43,7 +43,7 @@ func JWTRefreshMiddleware(secret []byte, userService usecases.UserService) echo.
 				return response.NewErrorResponse(c, errs.NewBadRequestError("Failed to convert string to uuid"))
 			}
 
-			user, err := userService.FindByUserID(userID)
+			user, err := userService.FindByUserID(c.Request().Context(), userID)
 			if err != nil {
 				return echo.NewHTTPError(http.StatusUnauthorized, "User not found")
 			}

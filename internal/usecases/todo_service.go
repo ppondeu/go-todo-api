@@ -20,7 +20,7 @@ type TodoService interface {
 	FindByTodoID(context.Context, uuid.UUID, uuid.UUID) (*domain.Todo, error)
 	FindByUserID(context.Context, uuid.UUID) ([]domain.Todo, error)
 	List(context.Context, uuid.UUID, ports.TodoListFilter) (*ports.TodoPage, error)
-	InitTodoState(uuid.UUID) ([]domain.TodoState, error)
+	InitTodoState(context.Context, uuid.UUID) ([]domain.TodoState, error)
 }
 
 type todoServiceImpl struct {
@@ -148,8 +148,8 @@ func validTodoSort(sort string) bool {
 	}
 }
 
-func (s *todoServiceImpl) InitTodoState(userID uuid.UUID) ([]domain.TodoState, error) {
-	states, err := s.todoRepo.InitTodoState(userID)
+func (s *todoServiceImpl) InitTodoState(ctx context.Context, userID uuid.UUID) ([]domain.TodoState, error) {
+	states, err := s.todoRepo.InitTodoState(ctx, userID)
 	if err != nil {
 		return nil, errs.NewInternalError("could not initialize todo states")
 	}
