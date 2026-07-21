@@ -67,11 +67,13 @@ func (server *Server) RegisterRoute(validator *validator.Validate) {
 
 	jwtAccessMiddleware := middlewares.JWTAccessMiddleware([]byte(server.Config.Auth.AccessSecret), userService)
 	jwtRefreshMiddleware := middlewares.JWTRefreshMiddleware([]byte(server.Config.Auth.RefreshSecret), userService)
+	sessionRateLimiter := middlewares.NewSessionRateLimiter(server.Config.RateLimit)
 
 	routeGroup := server.Echo.Group("/api/v1")
 
 	userGroup := routeGroup.Group("/users")
 	userGroup.Use(jwtAccessMiddleware)
+	userGroup.Use(sessionRateLimiter)
 	userGroup.GET("", userHandler.GetUsers)
 	userGroup.GET("/:id", userHandler.GetUser)
 	userGroup.PATCH("/:id", userHandler.UpdateUser)
@@ -81,11 +83,12 @@ func (server *Server) RegisterRoute(validator *validator.Validate) {
 	authGroup := routeGroup.Group("/auth")
 	authGroup.POST("/login", authHandler.Login)
 	authGroup.POST("/register", authHandler.Register)
-	authGroup.POST("/refresh-token", jwtRefreshMiddleware(authHandler.Refresh))
-	authGroup.POST("/logout", jwtRefreshMiddleware(authHandler.Logout))
+	authGroup.POST("/refresh-token", authHandler.Refresh, jwtRefreshMiddleware, sessionRateLimiter)
+	authGroup.POST("/logout", authHandler.Logout, jwtRefreshMiddleware, sessionRateLimiter)
 
 	todoGroup := routeGroup.Group("/todos")
 	todoGroup.Use(jwtAccessMiddleware)
+	todoGroup.Use(sessionRateLimiter)
 	todoGroup.POST("", todoHandler.CreateTodo)
 	todoGroup.GET("/:userId", todoHandler.GetTodosByUser)
 	todoGroup.PATCH("/:id", todoHandler.UpdateTodo)
